@@ -1,0 +1,29 @@
+{
+  "name": "lemma",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Лемма — агентная система роста для селлеров маркетплейсов: бенчмарки категорий, паттерны лидеров, гипотезы, тесты, интерпретация и раскатка.",
+  "scripts": {
+    "dev": "concurrently -n api,web \"node --disable-warning=ExperimentalWarning server/index.js\" \"vite --host 0.0.0.0\"",
+    "build": "vite build",
+    "start": "node --disable-warning=ExperimentalWarning server/index.js",
+    "seed": "node --disable-warning=ExperimentalWarning server/seed.js --force",
+    "test:ui": "node scripts/smoke.mjs && node scripts/interact.mjs && node scripts/repro.mjs"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@fontsource-variable/inter": "^5.1.0",
+    "@tanstack/react-query": "^5.62.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.0",
+    "jsdom": "^25.0.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.0",
+    "vite": "^6.0.3"
+  }
+}

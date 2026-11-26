@@ -1,0 +1,20 @@
+# Render Blueprint: деплой в один клик.
+# Подключите репозиторий на https://render.com/deploy — Render прочитает этот файл.
+# Постоянный диск хранит SQLite между деплоями и рестартами.
+services:
+  - type: web
+    name: lemma
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    healthCheckPath: /api/health
+    autoDeploy: true
+    disk:
+      name: lemma-data
+      mountPath: /app/data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
