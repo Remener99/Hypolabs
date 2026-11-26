@@ -77,6 +77,8 @@ export function undoAction(userId, actionId) {
     }
   } else if (p.kind === 'hypothesis') {
     deleteHypothesis(p.id)
+  } else if (p.kind === 'advice') {
+    q.run('UPDATE interpretations SET agent_advice=NULL WHERE id=?', p.id)
   } else if (p.kind === 'test_create') {
     const t = q.get('SELECT * FROM tests WHERE id=?', p.id)
     if (t) {
@@ -116,7 +118,7 @@ export function undoAction(userId, actionId) {
 
 export const parseHyp = (h) => h ? { ...h, card_ids: J(h.card_ids, []) } : h
 export const parseTest = (t) => t ? { ...t, warnings: J(t.warnings, []), planned: J(t.planned, {}) } : t
-export const parseInterp = (i) => i ? { ...i, effects: J(i.effects, []), controls: J(i.controls, []) } : i
+export const parseInterp = (i) => i ? { ...i, effects: J(i.effects, []), controls: J(i.controls, []), agent_advice: J(i.agent_advice) } : i
 export const parseRollout = (r) => r ? { ...r, control_ids: J(r.control_ids, []), waves: J(r.waves, []), series: J(r.series, {}) } : r
 export const parseCard = (c) => c ? { ...c, metrics: J(c.metrics, {}) } : c
 export const parseBench = (b) => b ? { ...b, bins: J(b.bins, []) } : b

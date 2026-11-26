@@ -108,8 +108,10 @@ export const GROUP_KEYS = ['content', 'logistics', 'price', 'ads', 'reviews', 's
 export const ACTION_TYPE_LABEL = {
   card_edit: 'Карточка', price: 'Цена', bid: 'Ставка', test_start: 'Запуск теста', wave: 'Раскатка',
   hypothesis: 'Гипотеза', accept: 'Принятие', decide: 'Решение', interpretation: 'Интерпретация',
-  benchmark: 'Бенчмарк', category: 'Категория', rollback: 'Откат', note: 'Запись', test: 'Тест'
+  benchmark: 'Бенчмарк', category: 'Категория', rollback: 'Откат', note: 'Запись', test: 'Тест',
+  agent_scan: 'Разбор агента', agent_advice: 'Совет агента'
 }
+export const fmtRub = (v) => `${(+v || 0).toFixed(2).replace('.', ',')} ₽`
 export const CARD_STATUS = { active: 'Активен', rolled: 'Раскатан', control: 'Контроль', test: 'В тесте' }
 
 // Требуемая выборка (та же формула, что на сервере) — для превью в форме

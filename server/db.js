@@ -86,12 +86,24 @@ CREATE TABLE IF NOT EXISTS daily (
   id INTEGER PRIMARY KEY AUTOINCREMENT, cabinet_id TEXT NOT NULL, date TEXT NOT NULL,
   revenue REAL, orders INTEGER, sessions INTEGER, conv REAL, ad_share REAL
 );
+CREATE TABLE IF NOT EXISTS agent_runs (
+  id TEXT PRIMARY KEY, cabinet_id TEXT NOT NULL, mode TEXT NOT NULL, scope TEXT,
+  status TEXT NOT NULL, model TEXT, tokens_in INTEGER DEFAULT 0, tokens_out INTEGER DEFAULT 0,
+  cost_rub REAL DEFAULT 0, duration_ms INTEGER DEFAULT 0, created_count INTEGER DEFAULT 0,
+  summary TEXT, error TEXT, created_at TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_cat_cab ON categories(cabinet_id);
 CREATE INDEX IF NOT EXISTS idx_bench_cat ON benchmarks(category_id);
 CREATE INDEX IF NOT EXISTS idx_hyp_cab ON hypotheses(cabinet_id);
 CREATE INDEX IF NOT EXISTS idx_act_cab ON actions(cabinet_id);
 CREATE INDEX IF NOT EXISTS idx_daily_cab ON daily(cabinet_id);
 `)
+
+// Миграции для уже существующих баз: новые поля агентного цикла
+for (const sql of [
+  'ALTER TABLE hypotheses ADD COLUMN agent_reason TEXT',
+  'ALTER TABLE interpretations ADD COLUMN agent_advice TEXT'
+]) { try { db.exec(sql) } catch { /* колонка уже есть */ } }
 
 export const uid = () => crypto.randomUUID().slice(0, 8) + crypto.randomUUID().slice(0, 4)
 export const now = () => new Date().toISOString()

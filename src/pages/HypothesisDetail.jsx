@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useQuery, useMutation } from '@tanstack/react-query'
-import { api, fmtMoney, fmtInt, fmtVal, fmtDate, CARD_STATUS } from '../api.js'
+import { api, fmtMoney, fmtInt, fmtVal, fmtDate, fmtRub, CARD_STATUS } from '../api.js'
 import { Icon, Chip, Button, Skeleton, Confirm, How, AgentBadge, Stepper, HypStatusChip, VerdictChip, PriorityDot, Funnel, ProgressBar, StatusChip, useToast, EmptyState } from '../ui.jsx'
 import { BenchmarkScale, EffectCI, BeforeAfter, WaveTrack, LinesChart } from '../charts.jsx'
 import { useShell, ActionFeed } from '../layout.jsx'
@@ -29,9 +29,15 @@ export default function HypothesisDetail() {
   const rollbackMut = useMutation({ mutationFn: () => api(`/interpretations/${data.interpretation.id}/decide`, { method: 'POST', body: { decision: 'rollback' } }), onSuccess: () => done('Изменения откачены, запись в журнале'), onError: fail })
   const advanceMut = useMutation({ mutationFn: () => api(`/rollouts/${data.rollout.id}/advance`, { method: 'POST' }), onSuccess: () => done('Следующая волна раскатана'), onError: fail })
   const delHypMut = useMutation({ mutationFn: () => api(`/hypotheses/${id}`, { method: 'DELETE' }), onSuccess: () => { toast('Гипотеза удалена'); refresh(); nav('/hypotheses') }, onError: fail })
+  const adviceMut = useMutation({
+    mutationFn: () => api('/agent/run', { method: 'POST', body: { cabinet_id: cabinet.id, mode: 'interpret', interpretation_id: data.interpretation.id } }),
+    onSuccess: () => { toast('Разбор агента готов'); refresh([['hypothesis', id]]) },
+    onError: (e) => toast(e.message, 'error')
+  })
 
   const waveActions = useMemo(() => (data?.actions || []).filter((a) => a.type === 'wave' && a.target?.id === data?.rollout?.id), [data])
   const startAction = useMemo(() => (data?.actions || []).find((a) => a.type === 'test_start' && a.target?.id === data?.test?.id), [data])
+  const adviceAction = useMemo(() => (data?.actions || []).find((a) => a.type === 'agent_advice' && !a.undone_at), [data])
 
   if (isLoading) return <div className="page"><Skeleton w={420} h={28} /><Skeleton h={40} style={{ marginTop: 14 }} /><Skeleton h={180} style={{ marginTop: 14 }} /><Skeleton h={220} style={{ marginTop: 14 }} /></div>
   if (!data) return null
@@ -98,9 +104,12 @@ export default function HypothesisDetail() {
       <div className="tile mb16">
         <div className="tile-head"><span className="tile-title">2 · Гипотеза</span><Funnel stage={h.funnel_stage} /></div>
         <div className="tile-pad">
-          <div className="flex jcb aic wrap gap12">
+            <div className="flex jcb aic wrap gap12">
             <div className="grow">
               <div className="small">Провалена стадия <b>«{h.funnel_stage}»</b>. Меняем: {h.title.toLowerCase()}.</div>
+              {h.origin === 'agent' && h.agent_reason && (
+                <div className="info-box mt8"><Icon name="spark" size={14} /><span><b>Обоснование агента:</b> {h.agent_reason}</span></div>
+              )}
               {myCards.length > 0 && (
                 <div className="flex gap6 wrap mt8">
                   {myCards.map((c) => <Chip key={c.id} kind="muted">{c.name}</Chip>)}
@@ -189,6 +198,37 @@ export default function HypothesisDetail() {
                 <div className="tiny muted mt4">{interp.verdict === 'confirmed' ? 'подтверждено тестом' : interp.verdict === 'failed' ? 'потери за время теста' : 'эффект не доказан'}</div>
               </div>
             </div>
+
+            {/* Разбор агента: объяснение и рекомендация, решение остаётся за пользователем */}
+            {interp.agent_advice ? (
+              <div className="tile tile-pad mt12" style={{ background: 'var(--bg-soft, #FAFAF8)' }}>
+                <div className="flex jcb aic gap8 wrap mb8">
+                  <span className="flex aic gap6 small bold" style={{ color: 'var(--primary)' }}><Icon name="spark" size={13} />Разбор агента</span>
+                  <div className="flex aic gap8 wrap">
+                    {adviceAction && <AgentBadge action={adviceAction} onUndo={requestUndo} />}
+                    <How align="right" data={{ source: `Агент · ${interp.agent_advice.model} (AITunnel)`, sample: `${fmtInt(test?.current_n)} наблюдений`, period: interp.agent_advice.created_at?.slice(0, 10), method: `Объяснение поверх статистики, решение за вами. ≈${fmtRub(interp.agent_advice.cost_rub)}` }} />
+                  </div>
+                </div>
+                <div className="small mb8" style={{ lineHeight: 1.6 }}>{interp.agent_advice.explanation}</div>
+                <div className="flex aic gap8 wrap">
+                  <Chip kind={interp.agent_advice.recommendation === 'scale' ? 'ok' : 'muted'}>
+                    <Icon name={interp.agent_advice.recommendation === 'scale' ? 'wave' : 'undo'} size={11} />
+                    {interp.agent_advice.recommendation === 'scale' ? 'рекомендует масштабировать' : 'рекомендует откат'}
+                  </Chip>
+                  <span className="tiny muted grow">{interp.agent_advice.reason}</span>
+                </div>
+                {interp.agent_advice.watch?.length > 0 && <div className="tiny faint mt8">Следить после решения: {interp.agent_advice.watch.join(', ')}.</div>}
+              </div>
+            ) : (
+              !interp.decided && (
+                <div className="flex aic gap8 wrap mt12">
+                  <Button size="sm" icon="spark" disabled={adviceMut.isPending} onClick={() => adviceMut.mutate()}>
+                    {adviceMut.isPending ? 'Агент думает…' : 'Объяснить результат агентом'}
+                  </Button>
+                  <span className="tiny muted">≈ 0,1 ₽ · агент объяснит интервал и порекомендует действие, решение за вами</span>
+                </div>
+              )
+            )}
 
             {/* 5. Решение: ровно два действия */}
             <div className="divider" />

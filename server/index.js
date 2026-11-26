@@ -5,7 +5,8 @@ import path from 'node:path'
 import fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { db, q, uid, now, S, J } from './db.js'
-import { requiredSample, binsFromQuantiles, rolloutSeries } from './stats.js'
+import { requiredSample, binsFromQuantiles, rolloutSeries, benchStatus } from './stats.js'
+import { runAgent, agentStatus } from './agent.js'
 import {
   HttpError, bad, notFound, ownCabinet, ownCategory, ownHypothesis,
   logAction, undoAction, deleteHypothesis, deleteCategory, setCardField,
@@ -113,16 +114,6 @@ app.delete('/api/cabinets/:id', (req, res) => {
 })
 
 // ---------- overview (dashboard) ----------
-function benchStatus(b) {
-  const corridor = b.unit === '₽'
-  if (b.seller >= b.p25 && b.seller <= b.p75) return { key: 'ok', label: 'В норме' }
-  if (corridor) return b.seller < b.p25 ? { key: 'warn', label: 'Ниже коридора' } : { key: 'warn', label: 'Выше коридора' }
-  const below = b.seller < b.p25
-  const good = b.higher_better ? !below : below
-  if (b.seller >= b.p90 && b.higher_better) return { key: 'lead', label: 'Уровень лидеров' }
-  if (b.seller <= b.p10 && !b.higher_better) return { key: 'lead', label: 'Уровень лидеров' }
-  return good ? { key: 'ok', label: 'В норме' } : { key: 'gap', label: below ? 'Ниже нормы' : 'Выше нормы' }
-}
 app.get('/api/cabinets/:id/overview', (req, res) => {
   const cab = ownCabinet(req.user.id, req.params.id)
   const daily = q.all('SELECT * FROM daily WHERE cabinet_id=? ORDER BY date', cab.id)
@@ -615,6 +606,19 @@ app.delete('/api/actions/:id', (req, res) => {
   res.json({ ok: true })
 })
 app.post('/api/actions/:id/undo', (req, res) => res.json(undoAction(req.user.id, req.params.id)))
+
+// ---------- агентный цикл (LLM через AITunnel) ----------
+app.get('/api/agent/config', (req, res) => res.json(agentStatus()))
+app.get('/api/agent/runs', (req, res) => {
+  ownCabinet(req.user.id, req.query.cabinet_id)
+  res.json(q.all('SELECT * FROM agent_runs WHERE cabinet_id=? ORDER BY created_at DESC LIMIT 20', req.query.cabinet_id))
+})
+app.post('/api/agent/run', async (req, res, next) => {
+  try {
+    const { cabinet_id, mode, category_id, interpretation_id } = req.body || {}
+    res.json(await runAgent(req.user.id, { cabinet_id, mode, category_id, interpretation_id }))
+  } catch (e) { next(e) }
+})
 
 // ---------- static SPA ----------
 const dist = path.join(root, 'dist')

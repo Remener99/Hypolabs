@@ -9,7 +9,8 @@
     "build": "vite build",
     "start": "node --disable-warning=ExperimentalWarning server/index.js",
     "seed": "node --disable-warning=ExperimentalWarning server/seed.js --force",
-    "test:ui": "node scripts/smoke.mjs && node scripts/interact.mjs && node scripts/repro.mjs"
+    "test:ui": "node scripts/smoke.mjs && node scripts/interact.mjs && node scripts/repro.mjs",
+    "test:agent": "node scripts/agent-test.mjs"
   },
   "dependencies": {
     "cookie-parser": "^1.4.7",

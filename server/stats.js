@@ -1,4 +1,16 @@
 // Статистика: мощность двухдолевого z-теста и генерация распределений
+
+// Статус бенчмарка: где продавец относительно нормы категории
+export function benchStatus(b) {
+  const corridor = b.unit === '₽'
+  if (b.seller >= b.p25 && b.seller <= b.p75) return { key: 'ok', label: 'В норме' }
+  if (corridor) return b.seller < b.p25 ? { key: 'warn', label: 'Ниже коридора' } : { key: 'warn', label: 'Выше коридора' }
+  const below = b.seller < b.p25
+  const good = b.higher_better ? !below : below
+  if (b.seller >= b.p90 && b.higher_better) return { key: 'lead', label: 'Уровень лидеров' }
+  if (b.seller <= b.p10 && !b.higher_better) return { key: 'lead', label: 'Уровень лидеров' }
+  return good ? { key: 'ok', label: 'В норме' } : { key: 'gap', label: below ? 'Ниже нормы' : 'Выше нормы' }
+}
 export function requiredSample(p1, mdeAbs, alpha = 0.05, power = 0.8) {
   const p2 = Math.min(0.95, Math.max(0.001, p1 + mdeAbs))
   const zA = 1.959964 // alpha 0.05, two-sided

@@ -5,6 +5,7 @@ import { api, fmtMoney, fmtInt, fmtVal, fmtDate, GROUPS } from '../api.js'
 import { Icon, Chip, StatusChip, HypStatusChip, Skeleton, EmptyState, How, Button, ProgressBar } from '../ui.jsx'
 import { Sparkline, Radar } from '../charts.jsx'
 import { useShell, ActionFeed } from '../layout.jsx'
+import { AgentRunButton } from '../agent.jsx'
 
 export default function Dashboard() {
   const { cabinet, openAgent, requestUndo } = useShell()
@@ -97,7 +98,10 @@ export default function Dashboard() {
         <div className="tile">
           <div className="tile-head">
             <span className="tile-title">Активные гипотезы и тесты</span>
-            <a className="tile-link" onClick={(e) => { e.stopPropagation(); nav('/hypotheses') }}>все<Icon name="chevRight" size={11} /></a>
+            <div className="flex aic gap8">
+              <AgentRunButton size="xs" label="Подобрать гипотезы" />
+              <a className="tile-link" onClick={(e) => { e.stopPropagation(); nav('/hypotheses') }}>все<Icon name="chevRight" size={11} /></a>
+            </div>
           </div>
           {data.active.length === 0 && <EmptyState icon="flask" title="Нет активных гипотез" text="Создайте гипотезу из разрыва с бенчмарком — или дождитесь предложения агента." action={<Button size="sm" variant="soft" icon="plus" onClick={() => nav('/hypotheses')}>Новая гипотеза</Button>} />}
           {data.active.map((h) => (
