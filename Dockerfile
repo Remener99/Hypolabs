@@ -18,6 +18,7 @@ COPY --from=build /app/dist ./dist
 RUN mkdir -p /app/data
 ENV PORT=3000
 EXPOSE 3000
-# Постоянное хранилище: примонтируйте том в /app/data (SQLite живёт там)
-VOLUME ["/app/data"]
+# Постоянное хранилище подключается снаружи: том `-v lemma-data:/app/data`
+# или диск Render с mountPath /app/data. Без тома данные эфемерны —
+# это нормально для бесплатного плана Render, база засеется демо-данными.
 CMD ["node", "--disable-warning=ExperimentalWarning", "server/index.js"]
