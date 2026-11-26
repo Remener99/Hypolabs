@@ -102,6 +102,14 @@ try {
   await waitFor('Свежие действия')
   console.log('OK: выдвижная панель действий')
 
+  // Агентный цикл: кнопка запуска и окно настройки без ключа (в смоук-окружении ключа нет)
+  clickText('button', 'Подобрать гипотезы')
+  await waitFor('Агент не подключён')
+  await waitFor('AITUNNEL_API_KEY')
+  console.log('OK: запуск агента — окно подключения без ключа')
+  clickText('.modal-head button', '')
+  await sleep(300)
+
   if (errors.length) { console.log('JS-ошибки:', errors.slice(0, 5)); process.exit(1) }
   console.log('\nСМОУК ПРОЙДЕН: все ключевые экраны живые.')
   process.exit(0)

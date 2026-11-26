@@ -28,6 +28,10 @@ services:
         value: production
       - key: PORT
         value: 3000
+      # Агентный цикл: модель по умолчанию. Ключ AITUNNEL_API_KEY добавьте
+      # вручную в Environment сервиса (в blueprint секреты не кладём).
+      - key: AITUNNEL_MODEL
+        value: deepseek-v4.1-flash
     # --- постоянство: включить вместе с plan: starter ---
     # disk:
     #   name: lemma-data

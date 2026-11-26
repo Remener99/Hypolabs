@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
-import { api, setToken, safeStore, fmtWhen, dayKey, ACTION_TYPE_LABEL } from './api.js'
+import { api, setToken, safeStore, fmtWhen, dayKey, fmtRub, ACTION_TYPE_LABEL } from './api.js'
 import { Icon, Button, Chip, Confirm, How, EmptyState, Skeleton, useToast } from './ui.jsx'
 import { actionLink, useRefreshAll } from './hooks.js'
+import { AgentRunModal } from './agent.jsx'
 
 const ShellCtx = createContext(null)
 export const useShell = () => useContext(ShellCtx)
@@ -11,7 +12,8 @@ export const useShell = () => useContext(ShellCtx)
 const TYPE_ICON = {
   card_edit: 'image', price: 'tag', bid: 'target', test_start: 'play', wave: 'wave',
   hypothesis: 'flask', accept: 'check', decide: 'flag', interpretation: 'scale',
-  benchmark: 'dashboard', category: 'layers', rollback: 'undo', note: 'journal', test: 'flask'
+  benchmark: 'dashboard', category: 'layers', rollback: 'undo', note: 'journal', test: 'flask',
+  agent_scan: 'spark', agent_advice: 'scale'
 }
 
 export function Shell() {
@@ -26,6 +28,7 @@ export function Shell() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [agentOpen, setAgentOpen] = useState(false)
   const [undoTarget, setUndoTarget] = useState(null)
+  const [agentRun, setAgentRun] = useState(null)
 
   useEffect(() => {
     if (!cabLoading && cabinets.length) {
@@ -45,6 +48,7 @@ export function Shell() {
     queryFn: () => api(`/agent/recent?cabinet_id=${cabinet.id}`),
     enabled: !!cabinet, refetchInterval: 60000
   })
+  const { data: agentCfg } = useQuery({ queryKey: ['agent-config'], queryFn: () => api('/agent/config'), staleTime: 30000 })
   const refresh = useRefreshAll(cabinet?.id)
 
   const undoMut = useMutation({
@@ -74,7 +78,7 @@ export function Shell() {
     : loc.pathname.startsWith('/hypotheses') ? 'Гипотезы'
     : loc.pathname.startsWith('/journal') ? 'Журнал действий' : 'Лемма'
 
-  const ctx = { cabinet, cabinets, switchCab, openAgent: () => setAgentOpen(true), requestUndo: setUndoTarget, me, refresh }
+  const ctx = { cabinet, cabinets, switchCab, openAgent: () => setAgentOpen(true), requestUndo: setUndoTarget, me, refresh, openAgentRun: (opts) => setAgentRun(opts || { mode: 'scan' }) }
 
   return (
     <ShellCtx.Provider value={ctx}>
@@ -157,6 +161,16 @@ export function Shell() {
                 <button className="icon-btn" onClick={() => setAgentOpen(false)} aria-label="Закрыть"><Icon name="x" /></button>
               </div>
               <div className="drawer-body">
+                {agentCfg && (
+                  <div className="flex jcb aic gap8 wrap" style={{ padding: '0 4px 10px', borderBottom: '1px solid var(--line-soft)', marginBottom: 10 }}>
+                    <span className="tiny muted">
+                      {agentCfg.configured
+                        ? <>Агент: {agentCfg.model} · за месяц ≈ {fmtRub(agentCfg.month_spent_rub)} из {fmtRub(agentCfg.month_budget_rub)}</>
+                        : 'Агент не подключён — нужен ключ AITunnel'}
+                    </span>
+                    <Button size="xs" variant="soft" icon="spark" onClick={() => { setAgentOpen(false); setAgentRun({ mode: 'scan' }) }}>Подобрать гипотезы</Button>
+                  </div>
+                )}
                 {recent.length === 0 && <EmptyState icon="activity" title="Пока тихо" text="Здесь появятся изменения агента и ваши действия: карточки, ставки, цены, тесты и раскатки." />}
                 <ActionFeed actions={recent} onUndo={setUndoTarget} onNavigate={(to) => { setAgentOpen(false); nav(to) }} />
               </div>
@@ -166,6 +180,8 @@ export function Shell() {
             </aside>
           </>
         )}
+
+        {agentRun && <AgentRunModal options={agentRun} onClose={() => setAgentRun(null)} />}
 
         <Confirm
           open={!!undoTarget}

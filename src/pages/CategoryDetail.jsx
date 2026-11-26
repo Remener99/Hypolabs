@@ -7,6 +7,7 @@ import { BenchmarkScale, Radar, ProfileBars } from '../charts.jsx'
 import { useShell } from '../layout.jsx'
 import { CategoryForm, BenchmarkForm, PatternForm, EventForm, CardForm } from '../forms.jsx'
 import { actionMap, useRefreshAll } from '../hooks.js'
+import { AgentRunButton } from '../agent.jsx'
 
 export default function CategoryDetail() {
   const { id } = useParams()
@@ -52,7 +53,8 @@ export default function CategoryDetail() {
             <div className="page-sub">{c.description}</div>
           </div>
         </div>
-        <div className="flex gap8 aic">
+        <div className="flex gap8 aic wrap">
+          <AgentRunButton categoryId={id} label="Разобрать разрывы" />
           <Button size="sm" icon="edit" onClick={() => setForm({ type: 'category', item: c })}>Изменить</Button>
           <Button size="sm" variant="danger" icon="trash" onClick={() => setDelCat(true)}>Удалить</Button>
         </div>

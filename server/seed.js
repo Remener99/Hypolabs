@@ -9,7 +9,7 @@ if (hasUsers && !force) {
   process.exit(0)
 }
 if (force) {
-  for (const t of ['sessions', 'actions', 'rollouts', 'interpretations', 'tests', 'hypotheses', 'daily', 'cards', 'events', 'patterns', 'benchmarks', 'categories', 'cabinets', 'users']) {
+  for (const t of ['sessions', 'actions', 'agent_runs', 'rollouts', 'interpretations', 'tests', 'hypotheses', 'daily', 'cards', 'events', 'patterns', 'benchmarks', 'categories', 'users', 'cabinets']) {
     db.exec(`DELETE FROM ${t}`)
   }
 }
