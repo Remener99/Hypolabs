@@ -1,20 +1,35 @@
-# Render Blueprint: деплой в один клик.
-# Подключите репозиторий на https://render.com/deploy — Render прочитает этот файл.
-# Постоянный диск хранит SQLite между деплоями и рестартами.
+# Render Blueprint — БЕСПЛАТНЫЙ план, карта не требуется.
+# Подключить: https://render.com/deploy?repo=https://github.com/Remener99/Hypolabs
+#
+# Почему без диска: постоянный диск на Render требует платного инстанса,
+# а блок disk: вместе с plan: free делает весь blueprint невалидным.
+# Поэтому на free база SQLite лежит на временной файловой системе.
+#
+# Что это значит на бесплатном плане:
+#   - база пересоздаётся с демо-данными при каждом редеплое, рестарте
+#     и пробуждении после простоя (изменения не сохраняются);
+#   - сервис засыпает после ~15 минут без трафика, первый запрос
+#     будит его за ~30-60 секунд;
+#   - 512 МБ RAM, 0.1 CPU, 750 инстанс-часов в месяц.
+#
+# Апгрейд до постоянных данных (платно, ~$7/мес + диск):
+#   1) plan: free  ->  plan: starter
+#   2) раскомментировать блок disk: ниже
 services:
   - type: web
     name: lemma
     runtime: docker
-    plan: starter
+    plan: free
     region: frankfurt
     healthCheckPath: /api/health
     autoDeploy: true
-    disk:
-      name: lemma-data
-      mountPath: /app/data
-      sizeGB: 1
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 3000
+    # --- постоянство: включить вместе с plan: starter ---
+    # disk:
+    #   name: lemma-data
+    #   mountPath: /app/data
+    #   sizeGB: 1
