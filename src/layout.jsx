@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
-import { api, setToken, fmtWhen, dayKey, ACTION_TYPE_LABEL } from './api.js'
+import { api, setToken, safeStore, fmtWhen, dayKey, ACTION_TYPE_LABEL } from './api.js'
 import { Icon, Button, Chip, Confirm, How, EmptyState, Skeleton, useToast } from './ui.jsx'
 import { actionLink, useRefreshAll } from './hooks.js'
 
@@ -21,7 +21,7 @@ export function Shell() {
   const toast = useToast()
   const { data: me } = useQuery({ queryKey: ['me'], queryFn: () => api('/auth/me') })
   const { data: cabinets = [], isLoading: cabLoading } = useQuery({ queryKey: ['cabinets'], queryFn: () => api('/cabinets') })
-  const [cabId, setCabId] = useState(() => localStorage.getItem('lemma_cabinet'))
+  const [cabId, setCabId] = useState(() => safeStore.get('lemma_cabinet'))
   const [cabMenu, setCabMenu] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [agentOpen, setAgentOpen] = useState(false)
@@ -31,14 +31,14 @@ export function Shell() {
     if (!cabLoading && cabinets.length) {
       if (!cabId || !cabinets.some((c) => c.id === cabId)) {
         setCabId(cabinets[0].id)
-        localStorage.setItem('lemma_cabinet', cabinets[0].id)
+        safeStore.set('lemma_cabinet', cabinets[0].id)
       }
     }
   }, [cabLoading, cabinets, cabId])
   useEffect(() => { setSidebarOpen(false) }, [loc.pathname])
 
   const cabinet = cabinets.find((c) => c.id === cabId) || cabinets[0]
-  const switchCab = (id) => { setCabId(id); localStorage.setItem('lemma_cabinet', id); setCabMenu(false) }
+  const switchCab = (id) => { setCabId(id); safeStore.set('lemma_cabinet', id); setCabMenu(false) }
 
   const { data: recent = [] } = useQuery({
     queryKey: ['agent', cabinet?.id],

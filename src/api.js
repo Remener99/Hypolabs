@@ -2,12 +2,19 @@ export class ApiError extends Error {
   constructor(status, message) { super(message); this.status = status }
 }
 
-let token = localStorage.getItem('lemma_token') || null
+// Хранилище может быть недоступно (third-party iframe, приватный режим) — не роняем приложение
+const store = {
+  get(k) { try { return localStorage.getItem(k) } catch { return null } },
+  set(k, v) { try { localStorage.setItem(k, v) } catch { /* ignore */ } },
+  del(k) { try { localStorage.removeItem(k) } catch { /* ignore */ } }
+}
+let token = store.get('lemma_token') || null
 export function setToken(t) {
   token = t
-  if (t) localStorage.setItem('lemma_token', t)
-  else localStorage.removeItem('lemma_token')
+  if (t) store.set('lemma_token', t)
+  else store.del('lemma_token')
 }
+export const safeStore = store
 
 export async function api(path, { method = 'GET', body } = {}) {
   const res = await fetch('/api' + path, {
@@ -15,13 +22,22 @@ export async function api(path, { method = 'GET', body } = {}) {
     credentials: 'include',
     headers: {
       ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-      ...(token ? { Authorization: 'Bearer ' + token } : {})
+      // Дублируем токен в кастомный заголовок: некоторые прокси срезают Authorization
+      ...(token ? { Authorization: 'Bearer ' + token, 'X-Lemma-Token': token } : {})
     },
     body: body !== undefined ? JSON.stringify(body) : undefined
   })
   let data = null
   try { data = await res.json() } catch { /* empty */ }
-  if (!res.ok) throw new ApiError(res.status, data?.error || 'Ошибка запроса')
+  if (!res.ok) {
+    if (res.status === 401 && token && !path.startsWith('/auth/login')) {
+      // Централизованный выход только если токен БЫЛ и был отвергнут.
+      // Первый /auth/me без токена — это нормальная проверка «не вошли», не логаут.
+      setToken(null)
+      window.dispatchEvent(new CustomEvent('lemma:unauthorized'))
+    }
+    throw new ApiError(res.status, data?.error || 'Ошибка запроса')
+  }
   return data
 }
 

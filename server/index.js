@@ -18,6 +18,21 @@ app.set('trust proxy', true)
 app.use(express.json({ limit: '2mb' }))
 app.use(cookieParser())
 
+// Лёгкий лог запросов — помогает диагностировать проблемы в превью-прокси
+app.use((req, res, next) => {
+  const t0 = Date.now()
+  res.on('finish', () => {
+    if (req.path.startsWith('/api') || res.statusCode >= 400) {
+      console.log(`${req.method} ${req.path} ${res.statusCode} ${Date.now() - t0}ms`)
+    }
+  })
+  next()
+})
+const extractToken = (req) =>
+  req.cookies?.[COOKIE] ||
+  (req.headers.authorization || '').replace('Bearer ', '') ||
+  req.headers['x-lemma-token'] || null
+
 // ---------- auth ----------
 const hashPw = (pw) => { const salt = crypto.randomBytes(16).toString('hex'); return `${salt}:${crypto.scryptSync(pw, salt, 64).toString('hex')}` }
 const checkPw = (pw, stored) => {
@@ -54,14 +69,14 @@ app.post('/api/auth/register', (req, res) => {
   res.json({ user: publicUser(q.get('SELECT * FROM users WHERE id=?', id)), token })
 })
 app.post('/api/auth/logout', (req, res) => {
-  const token = req.cookies?.[COOKIE] || (req.headers.authorization || '').replace('Bearer ', '')
+  const token = extractToken(req)
   if (token) q.run('DELETE FROM sessions WHERE token=?', token)
   res.clearCookie(COOKIE, { sameSite: 'none', secure: true, partitioned: true })
   res.json({ ok: true })
 })
 app.use('/api', (req, res, next) => {
   if (['/auth/login', '/auth/register', '/auth/logout'].includes(req.path)) return next()
-  const token = req.cookies?.[COOKIE] || (req.headers.authorization || '').replace('Bearer ', '')
+  const token = extractToken(req)
   if (!token) throw new HttpError(401, 'Нужен вход')
   const s = q.get('SELECT * FROM sessions WHERE token=?', token)
   if (!s || new Date(s.expires_at) < new Date()) throw new HttpError(401, 'Сессия истекла')

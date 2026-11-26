@@ -17,7 +17,9 @@ export default function Login() {
     onSuccess: (data) => {
       setToken(data.token)
       qc.setQueryData(['me'], { user: data.user })
-      qc.invalidateQueries()
+      // Не перезапрашиваем /auth/me сразу после входа: данные уже есть.
+      // Кабинеты и остальное подтянутся при монтировании Shell.
+      qc.invalidateQueries({ queryKey: ['cabinets'] })
       nav('/')
     },
     onError: (e) => setError(e.message)

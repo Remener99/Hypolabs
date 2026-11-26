@@ -9,7 +9,7 @@
     "build": "vite build",
     "start": "node --disable-warning=ExperimentalWarning server/index.js",
     "seed": "node --disable-warning=ExperimentalWarning server/seed.js --force",
-    "test:ui": "node scripts/smoke.mjs && node scripts/interact.mjs"
+    "test:ui": "node scripts/smoke.mjs && node scripts/interact.mjs && node scripts/repro.mjs"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.1.0",

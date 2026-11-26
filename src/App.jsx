@@ -1,8 +1,8 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
-import { api, ApiError } from './api.js'
-import { ToastProvider, Skeleton } from './ui.jsx'
+import { QueryClient, QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query'
+import { api, ApiError, setToken } from './api.js'
+import { ToastProvider, Skeleton, Icon, Button } from './ui.jsx'
 import { Shell } from './layout.jsx'
 import Login from './pages/Login.jsx'
 import Dashboard from './pages/Dashboard.jsx'
@@ -31,24 +31,68 @@ function Splash() {
   )
 }
 
+// Оба гейта принимают решение по одному признаку — наличию пользователя.
+// Ошибка фонового перезапроса не выкидывает из приложения и не создаёт цикл редиректов.
 function RequireAuth({ children }) {
   const loc = useLocation()
-  const { data, isLoading, error } = useQuery({ queryKey: ['me'], queryFn: () => api('/auth/me') })
-  if (isLoading) return <Splash />
-  if (error || !data?.user) return <Navigate to="/login" replace state={{ from: loc.pathname }} />
+  const { data, isPending } = useQuery({ queryKey: ['me'], queryFn: () => api('/auth/me') })
+  if (isPending) return <Splash />
+  if (!data?.user) return <Navigate to="/login" replace state={{ from: loc.pathname }} />
   return children
 }
 function LoginGate() {
-  const { data, isLoading } = useQuery({ queryKey: ['me'], queryFn: () => api('/auth/me'), retry: false })
-  if (isLoading) return <Splash />
+  const { data, isPending } = useQuery({ queryKey: ['me'], queryFn: () => api('/auth/me'), retry: false })
+  if (isPending) return <Splash />
   if (data?.user) return <Navigate to="/" replace />
   return <Login />
+}
+
+// Слушаем централизованный 401 и аккуратно сбрасываем сессию
+function AuthListener() {
+  const qc = useQueryClient()
+  useEffect(() => {
+    const onUnauthorized = () => {
+      setToken(null)
+      // Помечаем сессию пустой — гейты уведут на экран входа.
+      // Не делаем qc.clear(): это удалило бы активный запрос me и вызвало цикл.
+      qc.setQueryData(['me'], null)
+    }
+    window.addEventListener('lemma:unauthorized', onUnauthorized)
+    return () => window.removeEventListener('lemma:unauthorized', onUnauthorized)
+  }, [qc])
+  return null
+}
+
+// Никогда не оставляем белый экран: показываем ошибку и кнопку перезагрузки
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null } }
+  static getDerivedStateFromError(error) { return { error } }
+  componentDidCatch(error, info) { console.error('Лемма: ошибка рендера', error, info) }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="splash">
+          <div className="tile tile-pad" style={{ maxWidth: 460, margin: 16 }}>
+            <div className="flex aic gap8 mb12"><Icon name="alert" size={18} style={{ color: 'var(--danger)' }} /><h2>Что-то пошло не так</h2></div>
+            <div className="small muted mb16" style={{ lineHeight: 1.5 }}>
+              Приложение столкнулось с ошибкой и не смогло отрисовать экран. Перезагрузите страницу — если повторится, пришлите текст ниже.
+            </div>
+            <pre className="tiny" style={{ background: 'var(--panel)', border: '1px solid var(--line-soft)', borderRadius: 8, padding: 10, overflow: 'auto', maxHeight: 140, whiteSpace: 'pre-wrap' }}>{String(this.state.error?.message || this.state.error)}</pre>
+            <div className="mt16"><Button variant="primary" icon="undo" onClick={() => window.location.reload()}>Перезагрузить</Button></div>
+          </div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
 }
 
 export default function App() {
   return (
     <QueryClientProvider client={qc}>
       <ToastProvider>
+        <ErrorBoundary>
+        <AuthListener />
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginGate />} />
@@ -63,6 +107,7 @@ export default function App() {
             </Route>
           </Routes>
         </BrowserRouter>
+        </ErrorBoundary>
       </ToastProvider>
     </QueryClientProvider>
   )
