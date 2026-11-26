@@ -74,8 +74,10 @@ app.post('/api/auth/logout', (req, res) => {
   res.clearCookie(COOKIE, { sameSite: 'none', secure: true, partitioned: true })
   res.json({ ok: true })
 })
+// Публичная проверка живости — для хостинга, CI и мониторинга
+app.get('/api/health', (req, res) => res.json({ ok: true, service: 'lemma', time: now() }))
 app.use('/api', (req, res, next) => {
-  if (['/auth/login', '/auth/register', '/auth/logout'].includes(req.path)) return next()
+  if (['/auth/login', '/auth/register', '/auth/logout', '/health'].includes(req.path)) return next()
   const token = extractToken(req)
   if (!token) throw new HttpError(401, 'Нужен вход')
   const s = q.get('SELECT * FROM sessions WHERE token=?', token)
